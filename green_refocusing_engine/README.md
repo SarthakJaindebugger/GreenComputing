@@ -11,29 +11,36 @@ A research-grade hybrid computational imaging pipeline for sustainable refocusin
 - Depth: `/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/depth_images`
 - RGB: `/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/rbg_images`
 
-> Note: The loader also auto-handles the common typo `rbg_images` vs `rgb_images`.
+## Dependency note for your error
+If you see `ModuleNotFoundError: No module named 'depth_anything'`, this repo now supports two backends:
+1. Official Depth Anything package (`depth_anything.dpt`), OR
+2. Hugging Face Transformers depth-estimation fallback.
 
-## Installation
-```python
-# Run these in terminal
-# cd green_refocusing_engine
-# python -m venv .venv
-# source .venv/bin/activate
-# pip install -r requirements.txt
+Install either backend (both also work):
+```bash
+pip install -r requirements.txt
+pip install git+https://github.com/LiheYoung/Depth-Anything.git
 ```
 
-## Run at once (Python only, no bash)
-```python
-# from project root:
-# python run_pipeline.py
+## Installation
+```bash
+cd green_refocusing_engine
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Run at once (Python only)
+```bash
+python run_pipeline.py
 ```
 
 ## Alternative run (custom args)
-```python
-# python -m src.main \
-#   --rgb_dir "/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/rbg_images" \
-#   --depth_dir "/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/depth_images" \
-#   --sigma_max 8.0 --num_sigma_levels 12 --alpha 12.0
+```bash
+python -m src.main \
+  --rgb_dir "/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/rbg_images" \
+  --depth_dir "/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/depth_images" \
+  --sigma_max 8.0 --num_sigma_levels 12 --alpha 12.0
 ```
 
 ## Method summary

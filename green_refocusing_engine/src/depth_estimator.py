@@ -1,7 +1,7 @@
-"""Depth estimation module using Depth Anything.
+"""Depth estimation module with robust backend fallback.
 
-Monocular depth estimation predicts a relative depth field D(x, y) from one RGB image.
-The output preserves ordinal geometry and local structure but not absolute metric scale.
+Primary backend: official Depth Anything package (`depth_anything.dpt`).
+Fallback backend: Hugging Face `transformers` depth-estimation pipeline.
 """
 
 from __future__ import annotations
@@ -17,7 +17,19 @@ import torch
 from PIL import Image
 from torchvision import transforms
 
-from depth_anything.dpt import DepthAnything
+DEPTH_ANYTHING_IMPORT_ERROR: Exception | None = None
+try:
+    from depth_anything.dpt import DepthAnything  # type: ignore
+except Exception as exc:  # noqa: BLE001
+    DepthAnything = None
+    DEPTH_ANYTHING_IMPORT_ERROR = exc
+
+TRANSFORMERS_IMPORT_ERROR: Exception | None = None
+try:
+    from transformers import pipeline
+except Exception as exc:  # noqa: BLE001
+    pipeline = None
+    TRANSFORMERS_IMPORT_ERROR = exc
 
 
 @dataclass
@@ -29,6 +41,8 @@ class DepthInferenceResult:
 class DepthEstimator:
     def __init__(self, model_name: str = "LiheYoung/depth_anything_vits14", device: str | None = None) -> None:
         self.device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+        self.model_name = model_name
+        self.backend = ""
         self.model = self.initialize_model(model_name)
         self.preprocess = transforms.Compose(
             [
@@ -37,9 +51,23 @@ class DepthEstimator:
             ]
         )
 
-    def initialize_model(self, model_name: str) -> torch.nn.Module:
-        model = DepthAnything.from_pretrained(model_name).to(self.device).eval()
-        return model
+    def initialize_model(self, model_name: str):
+        if DepthAnything is not None:
+            self.backend = "depth_anything"
+            return DepthAnything.from_pretrained(model_name).to(self.device).eval()
+
+        if pipeline is not None:
+            self.backend = "transformers"
+            device_idx = 0 if self.device.type == "cuda" else -1
+            return pipeline("depth-estimation", model=model_name, device=device_idx)
+
+        raise ImportError(
+            "No depth backend available. Install one of:\n"
+            "1) pip install git+https://github.com/LiheYoung/Depth-Anything.git\n"
+            "2) pip install transformers\n"
+            f"depth_anything import error: {DEPTH_ANYTHING_IMPORT_ERROR}\n"
+            f"transformers import error: {TRANSFORMERS_IMPORT_ERROR}"
+        )
 
     def preprocess_image(self, image: np.ndarray) -> torch.Tensor:
         pil = Image.fromarray((np.clip(image, 0, 1) * 255).astype(np.uint8))
@@ -50,16 +78,29 @@ class DepthEstimator:
     def infer_depth(self, images: Iterable[np.ndarray] | np.ndarray) -> list[DepthInferenceResult]:
         if isinstance(images, np.ndarray):
             images = [images]
-        batch = torch.cat([self.preprocess_image(im) for im in images], dim=0)
-        if self.device.type == "cuda":
-            torch.cuda.synchronize()
+        images = list(images)
+
+        if self.backend == "depth_anything":
+            batch = torch.cat([self.preprocess_image(im) for im in images], dim=0)
+            if self.device.type == "cuda":
+                torch.cuda.synchronize()
+            t0 = time.perf_counter()
+            pred = self.model(batch)
+            if self.device.type == "cuda":
+                torch.cuda.synchronize()
+            latency = time.perf_counter() - t0
+            pred_np = pred.squeeze(1).detach().cpu().numpy()
+            return [DepthInferenceResult(depth=self.normalize_depth_map(d), latency_s=latency / len(pred_np)) for d in pred_np]
+
         t0 = time.perf_counter()
-        pred = self.model(batch)
-        if self.device.type == "cuda":
-            torch.cuda.synchronize()
-        latency = time.perf_counter() - t0
-        pred_np = pred.squeeze(1).detach().cpu().numpy()
-        return [DepthInferenceResult(depth=self.normalize_depth_map(d), latency_s=latency / len(pred_np)) for d in pred_np]
+        results = []
+        for im in images:
+            pil = Image.fromarray((np.clip(im, 0, 1) * 255).astype(np.uint8))
+            out = self.model(pil)
+            depth_img = np.array(out["depth"], dtype=np.float32)
+            results.append(self.normalize_depth_map(depth_img))
+        latency = (time.perf_counter() - t0) / max(1, len(images))
+        return [DepthInferenceResult(depth=d, latency_s=latency) for d in results]
 
     def normalize_depth_map(self, depth: np.ndarray, eps: float = 1e-8) -> np.ndarray:
         return (depth - depth.min()) / (depth.max() - depth.min() + eps)
