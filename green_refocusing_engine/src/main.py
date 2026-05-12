@@ -24,39 +24,36 @@ def run(args):
         image = load_image_rgb(args.image_path)
         name = Path(args.image_path).stem
     else:
-        ds = NYUDataset(rgb_dir=args.rgb_dir, depth_dir=args.depth_dir, resize=(args.width, args.height))
+        ds = NYUDataset(args.dataset_path, split="test")
         sample = ds[0]
         image, name = sample["rgb"], sample["name"]
 
     depth = estimator.infer_depth(image)[0].depth
-    green_results = [
-        apply_spatially_varying_blur(depth, image, f, alpha=args.alpha, sigma_levels=sigma_levels, sigma_max=args.sigma_max)
-        for f in focus_values
-    ]
+    green_results = [apply_spatially_varying_blur(depth, image, f, alpha=12.0, sigma_levels=sigma_levels, sigma_max=args.sigma_max) for f in focus_values]
     green_outputs = [r.image for r in green_results]
-    baseline = repeated_neural_refocusing(image, focus_values, estimator, alpha=args.alpha, sigma_levels=sigma_levels, sigma_max=args.sigma_max)
 
-    out_root = Path(args.output_root)
-    save_image_rgb(out_root / "refocused_images" / f"{name}_green.png", green_outputs[len(green_outputs) // 2])
-    save_image_rgb(out_root / "comparisons" / f"{name}_baseline.png", baseline.outputs[len(baseline.outputs) // 2])
-    save_depth_and_sigma(depth, green_results[len(green_results) // 2].sigma_map, out_root / "depth_maps")
+    baseline = repeated_neural_refocusing(image, focus_values, estimator, alpha=12.0, sigma_levels=sigma_levels, sigma_max=args.sigma_max)
+    base_outputs = baseline.outputs
+
+    out_root = Path("outputs")
+    save_image_rgb(out_root / "refocused_images" / f"{name}_green.png", green_outputs[len(green_outputs)//2])
+    save_image_rgb(out_root / "comparisons" / f"{name}_baseline.png", base_outputs[len(base_outputs)//2])
+    save_depth_and_sigma(depth, green_results[len(green_results)//2].sigma_map, out_root / "depth_maps")
     make_focus_sweep_gif(green_outputs, out_root / "refocused_images" / f"{name}_sweep.gif")
 
-    df = evaluate_green_vs_baseline(green_outputs, baseline.outputs, image, out_root / "metrics" / "quality_metrics.csv")
+    df = evaluate_green_vs_baseline(green_outputs, base_outputs, image, out_root / "metrics" / "quality_metrics.csv")
     for metric in ["PSNR", "SSIM", "MSE"]:
         plot_bars(df, metric, out_root / "plots" / f"{metric.lower()}_comparison.png")
     print(df)
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser(description="Green Refocusing Engine runner")
-    p.add_argument("--image_path", type=str, default="", help="Optional single image path")
-    p.add_argument("--rgb_dir", type=str, default="/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/rbg_images")
-    p.add_argument("--depth_dir", type=str, default="/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/depth_images")
+    p = argparse.ArgumentParser()
+    p.add_argument("--image_path", type=str, default="")
+    p.add_argument("--dataset_path", type=str, default="data/nyu_depth_v2")
+    p.add_argument("--focal_depth", type=float, default=0.5)
     p.add_argument("--sigma_max", type=float, default=8.0)
-    p.add_argument("--num_sigma_levels", type=int, default=12)
-    p.add_argument("--alpha", type=float, default=12.0)
-    p.add_argument("--width", type=int, default=640)
-    p.add_argument("--height", type=int, default=480)
-    p.add_argument("--output_root", type=str, default="outputs")
+    p.add_argument("--num_sigma_levels", type=int, default=10)
+    p.add_argument("--method", type=str, default="green", choices=["green", "baseline"])
+    p.add_argument("--save_outputs", action="store_true")
     run(p.parse_args())

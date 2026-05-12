@@ -14,5 +14,3 @@ pandas
 Pillow
 imageio
 seaborn
-transformers
-huggingface-hub

@@ -2,63 +2,45 @@
 
 A research-grade hybrid computational imaging pipeline for sustainable refocusing.
 
-## Important clarification
-- **No training is required** for this repository.
-- We use a **pretrained Depth Anything model** for inference only.
-- NYU depth maps are used for pairing/evaluation and analysis.
-
-## Dataset paths configured for your machine
-- Depth: `/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/depth_images`
-- RGB: `/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/rbg_images`
-
-## Dependency note for your error
-If you see `ModuleNotFoundError: No module named 'depth_anything'`, this repo now supports two backends:
-1. Official Depth Anything package (`depth_anything.dpt`), OR
-2. Hugging Face Transformers depth-estimation fallback.
-
-Install either backend (both also work):
-```bash
-pip install -r requirements.txt
-pip install git+https://github.com/LiheYoung/Depth-Anything.git
-```
-
-
-## Using your locally cloned Depth-Anything repo
-This code automatically adds this path to `sys.path` before importing:
-`/Users/sarthakjain/Desktop/ML Projects/GreenComputing/Depth-Anything`
-
-If your clone is elsewhere, set:
-```bash
-export DEPTH_ANYTHING_LOCAL_REPO="/path/to/Depth-Anything"
-```
+## Overview
+This repository compares:
+1. **Baseline:** repeated neural depth inference per focus change.
+2. **Green method:** single depth inference + FFT spatially varying blur reuse.
 
 ## Installation
 ```bash
 cd green_refocusing_engine
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Run at once (Python only)
+## Dataset setup (NYU Depth V2)
+Place files as:
+```
+data/nyu_depth_v2/
+  test/
+    rgb/*.png
+    depth/*.png
+```
+Download source: NYU Depth V2 official pages/Kaggle mirrors, then convert to PNG pairs if needed.
+
+## Run
 ```bash
-python run_pipeline.py
+./run_pipeline.sh
+# or
+python -m src.main --image_path data/sample_images/example.jpg --sigma_max 10 --num_sigma_levels 16
 ```
 
-## Alternative run (custom args)
-```bash
-python -m src.main \
-  --rgb_dir "/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/rbg_images" \
-  --depth_dir "/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/depth_images" \
-  --sigma_max 8.0 --num_sigma_levels 12 --alpha 12.0
-```
+## Mathematical core
+- Relative depth map: \(D(x,y)\in[0,1]\).
+- Blur radius map:
+  \[\sigma(x,y)=\alpha |D(x,y)-F|\]
+- FFT blur:
+  \[I_\sigma = \mathcal{F}^{-1}(\mathcal{F}(I)\odot\mathcal{F}(G_\sigma))\]
+- Spatially varying synthesis via interpolation between precomputed sigma pyramid levels.
 
-## Method summary
-1. Predict relative depth once from RGB.
-2. Build sigma map: `sigma(x,y)=alpha*|D(x,y)-F|`.
-3. Precompute FFT Gaussian pyramid.
-4. Blend spatially for refocused outputs.
-5. Compare against repeated-inference baseline.
+## Sustainability motivation
+"Compute Once, Filter Many" removes repeated transformer inference and substantially lowers runtime, memory pressure, and estimated energy per focus sweep.
 
 ## Outputs
 - `outputs/depth_maps/`
@@ -66,3 +48,16 @@ python -m src.main \
 - `outputs/comparisons/`
 - `outputs/metrics/quality_metrics.csv`
 - `outputs/plots/*.png`
+
+## Methodology
+1. Load RGB(+depth GT when available).
+2. Run Depth Anything once (green) or per-focus (baseline).
+3. Generate sigma map(s), synthesize refocus.
+4. Evaluate MSE/PSNR/SSIM + efficiency metrics.
+5. Plot quality/efficiency trade-offs.
+
+## Future work
+- metric-depth calibration,
+- learned defocus kernels,
+- temporal consistency for video,
+- full hardware power logging via CodeCarbon/NVML integration.
