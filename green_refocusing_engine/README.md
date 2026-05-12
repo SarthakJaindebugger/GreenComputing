@@ -22,6 +22,16 @@ pip install -r requirements.txt
 pip install git+https://github.com/LiheYoung/Depth-Anything.git
 ```
 
+
+## Using your locally cloned Depth-Anything repo
+This code automatically adds this path to `sys.path` before importing:
+`/Users/sarthakjain/Desktop/ML Projects/GreenComputing/Depth-Anything`
+
+If your clone is elsewhere, set:
+```bash
+export DEPTH_ANYTHING_LOCAL_REPO="/path/to/Depth-Anything"
+```
+
 ## Installation
 ```bash
 cd green_refocusing_engine

@@ -1,11 +1,15 @@
-"""Depth estimation module with robust backend fallback.
+"""Depth estimation module with local Depth-Anything repo support.
 
-Primary backend: official Depth Anything package (`depth_anything.dpt`).
-Fallback backend: Hugging Face `transformers` depth-estimation pipeline.
+Import priority:
+1) local cloned Depth-Anything repo path,
+2) installed `depth_anything` package,
+3) transformers fallback.
 """
 
 from __future__ import annotations
 
+import os
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +20,15 @@ import numpy as np
 import torch
 from PIL import Image
 from torchvision import transforms
+
+LOCAL_DEPTH_ANYTHING_ROOT = Path(
+    os.getenv(
+        "DEPTH_ANYTHING_LOCAL_REPO",
+        "/Users/sarthakjain/Desktop/ML Projects/GreenComputing/Depth-Anything",
+    )
+)
+if LOCAL_DEPTH_ANYTHING_ROOT.exists():
+    sys.path.insert(0, str(LOCAL_DEPTH_ANYTHING_ROOT))
 
 DEPTH_ANYTHING_IMPORT_ERROR: Exception | None = None
 try:
@@ -62,9 +75,12 @@ class DepthEstimator:
             return pipeline("depth-estimation", model=model_name, device=device_idx)
 
         raise ImportError(
-            "No depth backend available. Install one of:\n"
-            "1) pip install git+https://github.com/LiheYoung/Depth-Anything.git\n"
-            "2) pip install transformers\n"
+            "No depth backend available.\n"
+            f"Tried local repo: {LOCAL_DEPTH_ANYTHING_ROOT}\n"
+            "Install one of:\n"
+            "1) ensure cloned repo path contains `depth_anything/` package\n"
+            "2) pip install git+https://github.com/LiheYoung/Depth-Anything.git\n"
+            "3) pip install transformers\n"
             f"depth_anything import error: {DEPTH_ANYTHING_IMPORT_ERROR}\n"
             f"transformers import error: {TRANSFORMERS_IMPORT_ERROR}"
         )
