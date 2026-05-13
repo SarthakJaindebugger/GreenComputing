@@ -11,26 +11,16 @@ A research-grade hybrid computational imaging pipeline for sustainable refocusin
 - Depth: `/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/depth_images`
 - RGB: `/Users/sarthakjain/Desktop/ML Projects/GreenComputing/nyu_data/rbg_images`
 
-## Dependency note for your error
-If you see `ModuleNotFoundError: No module named 'depth_anything'`, this repo now supports two backends:
-1. Official Depth Anything package (`depth_anything.dpt`), OR
-2. Hugging Face Transformers depth-estimation fallback.
+## Depth backend (Transformers-only)
+This project now directly uses Hugging Face transformers Depth Anything:
+- `pipeline(task="depth-estimation", model="LiheYoung/depth-anything-base-hf")`
 
-Install either backend (both also work):
+Install deps:
 ```bash
 pip install -r requirements.txt
-pip install git+https://github.com/LiheYoung/Depth-Anything.git
 ```
 
-
-## Using your locally cloned Depth-Anything repo
-This code automatically adds this path to `sys.path` before importing:
-`/Users/sarthakjain/Desktop/ML Projects/GreenComputing/Depth-Anything`
-
-If your clone is elsewhere, set:
-```bash
-export DEPTH_ANYTHING_LOCAL_REPO="/path/to/Depth-Anything"
-```
+If you want to force CUDA device 0 in code, pass `device=0` to `DepthEstimator` (works only when CUDA is available).
 
 ## Installation
 ```bash
