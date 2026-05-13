@@ -6,12 +6,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-try:
-    from .blur_engine import apply_spatially_varying_blur
-    from .depth_estimator import DepthEstimator
-except ImportError:
-    from blur_engine import apply_spatially_varying_blur
-    from depth_estimator import DepthEstimator
+from .blur_engine import apply_spatially_varying_blur
+from .depth_estimator import DepthEstimator
 
 
 @dataclass

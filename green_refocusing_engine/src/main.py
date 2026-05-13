@@ -5,22 +5,13 @@ from pathlib import Path
 
 import numpy as np
 
-try:
-    from .blur_engine import apply_spatially_varying_blur
-    from .dataset_loader import NYUDataset
-    from .depth_estimator import DepthEstimator
-    from .evaluation import evaluate_green_vs_baseline
-    from .neural_baseline import repeated_neural_refocusing
-    from .utils import load_image_rgb, save_image_rgb, set_seed
-    from .visualization import make_focus_sweep_gif, plot_bars, save_depth_and_sigma
-except ImportError:
-    from blur_engine import apply_spatially_varying_blur
-    from dataset_loader import NYUDataset
-    from depth_estimator import DepthEstimator
-    from evaluation import evaluate_green_vs_baseline
-    from neural_baseline import repeated_neural_refocusing
-    from utils import load_image_rgb, save_image_rgb, set_seed
-    from visualization import make_focus_sweep_gif, plot_bars, save_depth_and_sigma
+from .blur_engine import apply_spatially_varying_blur
+from .dataset_loader import NYUDataset
+from .depth_estimator import DepthEstimator
+from .evaluation import evaluate_green_vs_baseline
+from .neural_baseline import repeated_neural_refocusing
+from .utils import load_image_rgb, save_image_rgb, set_seed
+from .visualization import make_focus_sweep_gif, plot_bars, save_depth_and_sigma
 
 
 def run(args):
@@ -43,7 +34,9 @@ def run(args):
         for f in focus_values
     ]
     green_outputs = [r.image for r in green_results]
-    baseline = repeated_neural_refocusing(image, focus_values, estimator, alpha=args.alpha, sigma_levels=sigma_levels, sigma_max=args.sigma_max)
+    baseline = repeated_neural_refocusing(
+        image, focus_values, estimator, alpha=args.alpha, sigma_levels=sigma_levels, sigma_max=args.sigma_max
+    )
 
     out_root = Path(args.output_root)
     save_image_rgb(out_root / "refocused_images" / f"{name}_green.png", green_outputs[len(green_outputs) // 2])
