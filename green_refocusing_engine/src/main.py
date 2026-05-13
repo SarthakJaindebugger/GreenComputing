@@ -5,13 +5,22 @@ from pathlib import Path
 
 import numpy as np
 
-from blur_engine import apply_spatially_varying_blur
-from dataset_loader import NYUDataset
-from depth_estimator import DepthEstimator
-from evaluation import evaluate_green_vs_baseline
-from neural_baseline import repeated_neural_refocusing
-from utils import load_image_rgb, save_image_rgb, set_seed
-from visualization import make_focus_sweep_gif, plot_bars, save_depth_and_sigma
+try:
+    from .blur_engine import apply_spatially_varying_blur
+    from .dataset_loader import NYUDataset
+    from .depth_estimator import DepthEstimator
+    from .evaluation import evaluate_green_vs_baseline
+    from .neural_baseline import repeated_neural_refocusing
+    from .utils import load_image_rgb, save_image_rgb, set_seed
+    from .visualization import make_focus_sweep_gif, plot_bars, save_depth_and_sigma
+except ImportError:
+    from blur_engine import apply_spatially_varying_blur
+    from dataset_loader import NYUDataset
+    from depth_estimator import DepthEstimator
+    from evaluation import evaluate_green_vs_baseline
+    from neural_baseline import repeated_neural_refocusing
+    from utils import load_image_rgb, save_image_rgb, set_seed
+    from visualization import make_focus_sweep_gif, plot_bars, save_depth_and_sigma
 
 
 def run(args):

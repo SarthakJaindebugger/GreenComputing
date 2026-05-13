@@ -9,7 +9,10 @@ import numpy as np
 import pandas as pd
 from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
-from energy_profiler import EnergyProfiler
+try:
+    from .energy_profiler import EnergyProfiler
+except ImportError:
+    from energy_profiler import EnergyProfiler
 
 
 def mse(x: np.ndarray, y: np.ndarray) -> float:
